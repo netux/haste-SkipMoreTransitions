@@ -143,7 +143,7 @@ public class StartRun_UISkip : IOneTimeSkippableSkip
                     worldShard.PlayLevel();
                 });
 
-                Utils.LogInstructions(il.Body.Instructions);
+                //Utils.LogInstructions(il.Body.Instructions);
                 
                 successfullyPatched = true;
             }

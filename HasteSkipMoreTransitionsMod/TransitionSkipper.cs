@@ -12,6 +12,7 @@ public class TransitionSkipper : MonoBehaviour
 
     public static readonly ShardPathSkip shardPathSkip = new();
     public static readonly WinShardEffectSkip winShardEffectSkip = new();
+    public static readonly StartRun_UISkip startRun_uiSkip = new();
     public static readonly PostGameScreensSkip postGameScreensSkip = new();
     public static readonly PlayerSpawnFromShardAnimSkip playerSpawnFromShardAnimSkip = new();
     public static readonly PlayerSpawnFromShardPlayerAnimSkip playerSpawnFromShardPlayerAnimSkip = new();
@@ -19,6 +20,7 @@ public class TransitionSkipper : MonoBehaviour
     public static readonly ISkippableSkip[] skippableSkips = [
         shardPathSkip,
         winShardEffectSkip,
+        startRun_uiSkip,
         postGameScreensSkip,
         playerSpawnFromShardAnimSkip,
         playerSpawnFromShardPlayerAnimSkip

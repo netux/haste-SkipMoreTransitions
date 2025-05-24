@@ -25,7 +25,10 @@ public class PlayerSpawnFromShardPlayerAnimSkip : IHoldSkippableSkip
         }
     }
 
+    public static bool successfullyPatched = false;
+    
     public static readonly State state = new();
+
     public static GameObject? skipUIGameObject;
 
     public override float Threshold { get => 0.25f; }
@@ -55,6 +58,11 @@ public class PlayerSpawnFromShardPlayerAnimSkip : IHoldSkippableSkip
 
     public override bool TrySkip()
     {
+        if (!successfullyPatched)
+        {
+            return false;
+        }
+        
         if (!state.IsAnimationRunning)
         {
             return false;
@@ -70,9 +78,13 @@ public class PlayerSpawnFromShardPlayerAnimSkip : IHoldSkippableSkip
         {
             var cursor = new ILCursor(il);
 
-            cursor.GotoNext(
+            if (!cursor.TryGotoNext(
                 i => i.MatchCallOrCallvirt(typeof(Time).GetMethod($"set_{nameof(Time.timeScale)}"))
-            );
+            ))
+            {
+                Debug.LogError($"{nameof(PlayerSpawnFromShardAnimSkip)}: Unable to find set call to Time.timeScale in TimeHandler. This skip will be disabled as a result.");
+                return;
+            }
 
             cursor.EmitDelegate((float timeScale) =>
             {
@@ -86,7 +98,14 @@ public class PlayerSpawnFromShardPlayerAnimSkip : IHoldSkippableSkip
 
                 return timeScale;
             });
+
+            successfullyPatched = true;
         };
+
+        if (!successfullyPatched)
+        {
+            return;
+        }
 
         static IEnumerator hook_PlayerSpawnFromShardPlayerAnim(On.GM_Hub.orig_PlayerSpawnFromShardPlayerAnim original, GM_Hub gmHub, PlayerCharacter player, float animTime, Transform spawnPoint)
         {

@@ -24,12 +24,19 @@ public class WinShardEffectSkip : IOneTimeSkippableSkip
         }
     };
 
+    public static bool successfullyPatched = false;
+
     public static readonly State state = new();
 
     public override void Initialize() => Patch();
 
     public override bool TrySkip()
     {
+        if (!successfullyPatched)
+        {
+            return false;
+        }
+
         if (!(WinShardEffect.instance && WinShardEffect.instance.playing))
         {
             return false;
@@ -54,13 +61,16 @@ public class WinShardEffectSkip : IOneTimeSkippableSkip
             .GetMethod(nameof(RunHandler.TransitionToPostGame), BindingFlags.Public | BindingFlags.Static);
 
         var delayedTransitionTargetMethod = FindDelayedTransitionTargetInlineMethod(Utils.GetILContextFromMethod(runHandlerCompleteRunMethod));
+        if (delayedTransitionTargetMethod == null)
+            {
+            Debug.LogError($"{nameof(WinShardEffectSkip)}: Unable to find MonoFunctions.DelayCall() inline target transition method. This skip will be disabled as a result.");
+            successfullyPatched = false;
+            return;
+        }
 
         new ILHook(delayedTransitionTargetMethod, (il) =>
         {
             var cursor = new ILCursor(il);
-
-            var runHandlerTransitionToPostGameMethod = typeof(RunHandler)
-                .GetMethod(nameof(RunHandler.TransitionToPostGame), BindingFlags.Public | BindingFlags.Static);
 
             Func<Instruction, bool>[] preds = [
                 i => i.MatchLdnull(),
@@ -85,6 +95,8 @@ public class WinShardEffectSkip : IOneTimeSkippableSkip
             });
 
             //Utils.LogInstructions(il.Body.Instructions);
+
+            successfullyPatched = true;
         });
 
         MethodBase? FindDelayedTransitionTargetInlineMethod(ILContext il)

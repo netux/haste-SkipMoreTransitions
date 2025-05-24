@@ -52,12 +52,19 @@ public class ShardPathSkip : IOneTimeSkippableSkip
         }
     };
 
+    public static bool successfullyPatched = false;
+    
     public static readonly State state = new();
 
     public override void Initialize() => Patch();
 
     public override bool TrySkip()
     {
+        if (!successfullyPatched)
+        {
+            return false;
+        }
+
         if (!state.IsPlayingAnimation)
         {
             return false;
@@ -70,6 +77,9 @@ public class ShardPathSkip : IOneTimeSkippableSkip
     void Patch()
     {
         var actionInvokeMethod = typeof(Action).GetMethod(nameof(Action.Invoke), BindingFlags.Public | BindingFlags.Instance);
+
+        bool shardPathCreatePathBetween1HookSuccessful = false;
+        bool shardPathCreatePathBetween2HookSuccessful = false;
 
         // Disable "jump to node" behavior when pressing space (default skip keybind) while the animation is running
         IL.LevelSelectCameraMouse.Update += (il) =>
@@ -88,7 +98,7 @@ public class ShardPathSkip : IOneTimeSkippableSkip
 
             ILLabel? elseBranchLabel = null;
 
-            cursor.GotoNext(
+            if (!cursor.TryGotoNext(
                 MoveType.After,
                 i => i.MatchLdsfld(
                     typeof(HasteInputSystem)
@@ -99,7 +109,11 @@ public class ShardPathSkip : IOneTimeSkippableSkip
                         .GetMethod(nameof(InputKey.GetKeyDown), BindingFlags.Public | BindingFlags.Instance)
                 ),
                 i => i.MatchBrfalse(out elseBranchLabel)
-            );
+            ))
+            {
+                Debug.LogError($"{nameof(PlayerSpawnFromShardAnimSkip)}: Unable to find call to HasteInputSystem.Interact.GetKeyDown() in LevelSelectCameraMouse. As a result, when skipping the level select path, you may see a camera jump.");
+                return;
+            }
 
             cursor.EmitDelegate(() => !(state.IsPlayingAnimation || UI_TransitionHandler.IsTransitioning));
             cursor.Emit(OpCodes.Brfalse_S, elseBranchLabel);
@@ -124,21 +138,39 @@ public class ShardPathSkip : IOneTimeSkippableSkip
         {
             new ILHook(
                 Utils.GetInlineCoroutineTarget(new ILCursor(il)).GetStateMachineTarget(),
-                PatchCreatePathBetweenIL
+                (il) =>
+                {
+                    shardPathCreatePathBetween1HookSuccessful = TryPatchCreatePathBetweenIL(il);
+                    if (!shardPathCreatePathBetween1HookSuccessful)
+                    {
+                        Debug.LogError($"{nameof(ShardPathSkip)}: Unable to find call to Action.invoke() in ShardPath.CreatePathBetween(List1, Vector3, Action). This skip will be disabled as a result.");
+                    }
+                }
             );
         };
         IL.ShardPath.CreatePathBetween_Vector3_Vector3_float_Action_float += (il) =>
         {
             new ILHook(
                 Utils.GetInlineCoroutineTarget(new ILCursor(il)).GetStateMachineTarget(),
-                PatchCreatePathBetweenIL
+                (il) =>
+                {
+                    shardPathCreatePathBetween2HookSuccessful = TryPatchCreatePathBetweenIL(il);
+                    if (!shardPathCreatePathBetween2HookSuccessful)
+                    {
+                        Debug.LogError($"{nameof(ShardPathSkip)}: Unable to find call to Action.invoke() in ShardPath.CreatePathBetween(Vector3, Vector3, float, Action, float). This skip will be disabled as a result.");
+                    }
+                }
             );
         };
-        void PatchCreatePathBetweenIL(ILContext il)
+
+        bool TryPatchCreatePathBetweenIL(ILContext il)
         {
             var cursor = new ILCursor(il);
 
-            cursor.GotoNext(i => i.MatchCallOrCallvirt(actionInvokeMethod));
+            if (!cursor.TryGotoNext(i => i.MatchCallOrCallvirt(actionInvokeMethod)))
+            {
+                return false;
+            }
 
             var actionInvokeCallIncomingLabels = cursor.IncomingLabels.ToArray();
 
@@ -162,6 +194,10 @@ public class ShardPathSkip : IOneTimeSkippableSkip
             }
 
             //Utils.LogInstructions(il.Body.Instructions);
+
+            return true;
         }
+
+        successfullyPatched = shardPathCreatePathBetween1HookSuccessful && shardPathCreatePathBetween2HookSuccessful;
     }
 }

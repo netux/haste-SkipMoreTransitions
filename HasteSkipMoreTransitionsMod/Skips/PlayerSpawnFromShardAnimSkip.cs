@@ -25,6 +25,8 @@ public class PlayerSpawnFromShardAnimSkip : IHoldSkippableSkip
         }
     }
 
+    public static bool successfullyPatched = false;
+
     public static readonly State state = new();
 
     public static GameObject? skipUIGameObject;
@@ -56,6 +58,11 @@ public class PlayerSpawnFromShardAnimSkip : IHoldSkippableSkip
 
     public override bool TrySkip()
     {
+        if (!successfullyPatched)
+        {
+            return false;
+        }
+
         if (!state.IsAnimationRunning || state.IsSkipping)
         {
             return false;
@@ -72,9 +79,13 @@ public class PlayerSpawnFromShardAnimSkip : IHoldSkippableSkip
         {
             var cursor = new ILCursor(il);
 
-            cursor.GotoNext(
+            if (!cursor.TryGotoNext(
                 i => i.MatchCallOrCallvirt(typeof(Time).GetMethod($"set_{nameof(Time.timeScale)}"))
-            );
+            ))
+            {
+                Debug.LogError($"{nameof(PlayerSpawnFromShardAnimSkip)}: Unable to find set call to Time.timeScale in TimeHandler. This skip will be disabled as a result.");
+                return;
+            }
 
             cursor.EmitDelegate((float timeScale) =>
             {
@@ -88,7 +99,14 @@ public class PlayerSpawnFromShardAnimSkip : IHoldSkippableSkip
 
                 return timeScale;
             });
+
+            successfullyPatched = true;
         };
+
+        if (!successfullyPatched)
+        {
+            return;
+        }
 
         IEnumerator hook_PlayerSpawnShardAnim(On.GM_Hub.orig_PlayerSpawnShardAnim original, GM_Hub gmHub, PlayerCharacter player, WorldShard currentShard)
         {

@@ -1,5 +1,7 @@
 using Mono.Cecil.Cil;
 using MonoMod.Cil;
+using MonoMod.RuntimeDetour;
+using MonoMod.Utils;
 using System.Reflection;
 using UnityEngine;
 
@@ -46,7 +48,14 @@ public class WinShardEffectSkip : IOneTimeSkippableSkip
 
     void Patch()
     {
-        IL.RunHandler.CompleteRun += (il) =>
+        var monoFunctionsDelayCallMethod = typeof(MonoFunctions).GetMethod(nameof(MonoFunctions.DelayCall), BindingFlags.Public | BindingFlags.Static);
+        var runHandlerCompleteRunMethod = typeof(RunHandler).GetMethod(nameof(RunHandler.CompleteRun), BindingFlags.NonPublic | BindingFlags.Static);
+        var runHandlerTransitionToPostGameMethod = typeof(RunHandler)
+            .GetMethod(nameof(RunHandler.TransitionToPostGame), BindingFlags.Public | BindingFlags.Static);
+
+        var delayedTransitionTargetMethod = FindDelayedTransitionTargetInlineMethod(Utils.GetILContextFromMethod(runHandlerCompleteRunMethod));
+
+        new ILHook(delayedTransitionTargetMethod, (il) =>
         {
             var cursor = new ILCursor(il);
 
@@ -76,6 +85,25 @@ public class WinShardEffectSkip : IOneTimeSkippableSkip
             });
 
             //Utils.LogInstructions(il.Body.Instructions);
-        };
+        });
+
+        MethodBase? FindDelayedTransitionTargetInlineMethod(ILContext il)
+        {
+            var cursor = new ILCursor(il);
+
+            Mono.Cecil.MethodReference? transitionInlineClassCecilMethodReference = null;
+            if (!cursor.TryGotoNext(
+                MoveType.Before,
+                i => i.MatchLdftn(out transitionInlineClassCecilMethodReference),
+                i => i.MatchNewobj(typeof(Action)),
+                i => i.MatchLdarg(out _),
+                i => i.MatchCallOrCallvirt(monoFunctionsDelayCallMethod)
+            ))
+            {
+                return null;
+            }
+
+            return transitionInlineClassCecilMethodReference.ResolveReflection();
+        }
     }
 }

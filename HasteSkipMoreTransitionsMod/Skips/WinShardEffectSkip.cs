@@ -88,9 +88,8 @@ public class WinShardEffectSkip : IOneTimeSkippableSkip
 
         var delayedTransitionTargetMethod = FindDelayedTransitionTargetInlineMethod(Utils.GetILContextFromMethod(runHandlerCompleteRunMethod));
         if (delayedTransitionTargetMethod == null)
-            {
+        {
             Debug.LogError($"{nameof(WinShardEffectSkip)}: Unable to find MonoFunctions.DelayCall() inline target transition method. This skip will be disabled as a result.");
-            successfullyPatched = false;
             return;
         }
 
@@ -103,7 +102,11 @@ public class WinShardEffectSkip : IOneTimeSkippableSkip
                 i => i.MatchLdftn(runHandlerTransitionToPostGameMethod),
                 i => i.MatchNewobj(typeof(Action))
             ];
-            cursor.GotoNext(preds);
+            if (!cursor.TryGotoNext(preds))
+            {
+                Debug.LogError($"{nameof(WinShardEffectSkip)}: Unable to find RunHandler.TransitionToPostGame() Action instantiation inside inline method of RunHandler.CompleteRun(). This skip will be disabled as a result.");
+                return;
+            }
             cursor.RemoveRange(preds.Length);
 
             cursor.EmitDelegate(() =>

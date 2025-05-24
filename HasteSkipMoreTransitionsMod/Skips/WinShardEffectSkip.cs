@@ -55,6 +55,32 @@ public class WinShardEffectSkip : IOneTimeSkippableSkip
 
     void Patch()
     {
+        /*
+         * Original code goes more or less like this:
+         * 
+         * class RunHandler {
+         *   // ...
+         *   
+         *   private static CompleteRun(..., transitionStartDelay) {
+         *     // ...
+         *     
+         *     if (transitionStartDelay > 0f) {
+         *       var temp_delayedTransitionAction = new Action(ActuallyPerformTransition);           // <------- what we are trying to ILHook into
+         *       MonoFunctions.DelayCall(temp_delayedTransitionAction, transitionStartDelay);
+         *     } else {
+         *       ActuallyPerformTransition();
+         *     }
+         *     
+         *     void ActuallyPerformTransition() {
+         *       WinShardEffect.PlayEffect();
+         *       
+         *       var temp_transitionToPostGameAction = new Action(RunHandler.TransitionToPostGame);  // <-------- what we are patching out when state.alreadyTransitionedToPostGame is true
+         *       MonoFunctions.DelayCall(temp_transitionToPostGameAction, someDelay);
+         *     }
+         *   }
+         * }
+         */
+
         var monoFunctionsDelayCallMethod = typeof(MonoFunctions).GetMethod(nameof(MonoFunctions.DelayCall), BindingFlags.Public | BindingFlags.Static);
         var runHandlerCompleteRunMethod = typeof(RunHandler).GetMethod(nameof(RunHandler.CompleteRun), BindingFlags.NonPublic | BindingFlags.Static);
         var runHandlerTransitionToPostGameMethod = typeof(RunHandler)

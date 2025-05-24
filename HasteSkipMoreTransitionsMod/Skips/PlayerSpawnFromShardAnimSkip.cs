@@ -90,11 +90,11 @@ public class PlayerSpawnFromShardAnimSkip : IHoldSkippableSkip
             });
         };
 
-        IEnumerator hook_PlayerSpawnShardAnim(On.GM_Hub.orig_PlayerSpawnShardAnim original, GM_Hub gmHub, WorldShard currentShard)
+        IEnumerator hook_PlayerSpawnShardAnim(On.GM_Hub.orig_PlayerSpawnShardAnim original, GM_Hub gmHub, PlayerCharacter player, WorldShard currentShard)
         {
             state.MarkAnimationRunning();
 
-            var enumerator = original(gmHub, currentShard);
+            var enumerator = original(gmHub, player, currentShard);
             while (enumerator.MoveNext())
             {
 #pragma warning disable IDE0031 // Use null propagation. Unity makes it hard to do this

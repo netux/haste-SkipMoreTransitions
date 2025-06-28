@@ -2,6 +2,7 @@
 
 public abstract class ISkippableSkip
 {
+    public abstract bool MultiplayerCompatible { get; }
     public abstract void Initialize();
 }
 

@@ -17,6 +17,8 @@ public class PostGameScreensSkip : IOneTimeSkippableSkip
 
     public static State state = new();
 
+    public override bool MultiplayerCompatible { get => true; }
+
     public override void Initialize() { /* no-op */ }
 
     public override bool TrySkip()

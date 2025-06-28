@@ -35,6 +35,8 @@ public class StartRun_UISkip : IOneTimeSkippableSkip
 
     public static readonly State state = new();
 
+    public override bool MultiplayerCompatible { get => false; }
+
     public override void Initialize() => Patch();
 
     public override bool TrySkip()

@@ -31,6 +31,8 @@ public class PlayerSpawnFromShardPlayerAnimSkip : IHoldSkippableSkip
 
     public static GameObject? skipUIGameObject;
 
+    public override bool MultiplayerCompatible { get => false; }
+
     public override float Threshold { get => 0.25f; }
 
     public override void Initialize()
@@ -51,7 +53,7 @@ public class PlayerSpawnFromShardPlayerAnimSkip : IHoldSkippableSkip
             {
                 yield return null;
 
-                skipUIGameObject = Utils.InstantiateHoldToSkipUIGameObject(this.GetType(), Threshold);
+                skipUIGameObject = Utils.InstantiateHoldToSkipUIGameObjectForSkippableSkip(this, Threshold);
             }
         };
     }

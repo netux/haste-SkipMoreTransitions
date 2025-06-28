@@ -1,8 +1,11 @@
-﻿using Mono.Cecil.Cil;
+﻿using HasteSkipMoreTransitionsMod.Skips;
+using Landfall.Haste;
+using Mono.Cecil.Cil;
 using MonoMod.Cil;
 using MonoMod.Utils;
 using System.Collections;
 using System.Reflection;
+using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Localization.Settings;
@@ -81,13 +84,13 @@ internal class Utils
             .AddEntry(key, localized);
     }
 
-    public static GameObject InstantiateHoldToSkipUIGameObject(Type skippableSkipType, float holdLength)
+    public static GameObject InstantiateHoldToSkipUIGameObjectForSkippableSkip(ISkippableSkip skippableSkip, float holdLength)
     {
         // Hardcoded values here are based off the similar UI in character interactions
 
         var parentTransform = GameObject.Find("GAME").transform;
 
-        var canvasGameObject = new GameObject($"UI_{skippableSkipType.Name}", [typeof(RectTransform)]);
+        var canvasGameObject = new GameObject($"UI_{skippableSkip.GetType().Name}", [typeof(RectTransform)]);
 
         var canvasTransform = (RectTransform)canvasGameObject.transform;
         canvasTransform.SetParent(parentTransform, worldPositionStays: false);
@@ -151,6 +154,20 @@ internal class Utils
         // Usually we want to stick to the game's defaults.
         // But for ISkippableSkips with very low thresholds, the progress UI might not even be visible
         holdProgressUI.HoldLengthStartShowing = Math.Min(holdLength * 0.2f, holdProgressUI.HoldLengthStartShowing);
+
+        if (!skippableSkip.MultiplayerCompatible)
+        {
+            canvasGameObject.SetActive(!HasteNetworking.IsMultiplayer);
+
+            NetworkManager.OnInstantiated += (_networkManager) =>
+            {
+                canvasGameObject?.SetActive(false);
+            };
+            NetworkManager.OnDestroying += (_networkManager) =>
+            {
+                canvasGameObject?.SetActive(true);
+            };
+        }
 
         TransitionSkipper.Instance // yoink
             .StartCoroutine(WhyIsThisNeededThough());

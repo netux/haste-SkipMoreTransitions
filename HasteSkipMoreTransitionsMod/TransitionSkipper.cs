@@ -1,4 +1,5 @@
 using HasteSkipMoreTransitionsMod.Skips;
+using Landfall.Haste;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using Zorro.Core;
@@ -80,6 +81,11 @@ public class TransitionSkipper : MonoBehaviour
         foreach (var skippableSkip in skippableSkips)
         {
             bool didSkip = false;
+
+            if (HasteNetworking.IsMultiplayer && !skippableSkip.MultiplayerCompatible)
+            {
+                continue;
+            }
 
             if (skippableSkip is IOneTimeSkippableSkip oneTimeSkippableSkip)
             {

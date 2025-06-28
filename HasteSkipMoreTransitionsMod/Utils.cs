@@ -159,14 +159,30 @@ internal class Utils
         {
             canvasGameObject.SetActive(!HasteNetworking.IsMultiplayer);
 
-            NetworkManager.OnInstantiated += (_networkManager) =>
+            NetworkManager.OnInstantiated += HandleNetworkManagerOnInstantiated;
+            NetworkManager.OnDestroying += HandleNetworkManagerOnDestroying;
+
+            void HandleNetworkManagerOnInstantiated(NetworkManager _networkManager)
             {
-                canvasGameObject?.SetActive(false);
-            };
-            NetworkManager.OnDestroying += (_networkManager) =>
+                if (canvasGameObject == null)
+                {
+                    NetworkManager.OnInstantiated -= HandleNetworkManagerOnInstantiated;
+                    return;
+                }
+
+                canvasGameObject.SetActive(false);
+            }
+
+            void HandleNetworkManagerOnDestroying(NetworkManager _networkManager)
             {
-                canvasGameObject?.SetActive(true);
-            };
+                if (canvasGameObject == null)
+                {
+                    NetworkManager.OnDestroying -= HandleNetworkManagerOnDestroying;
+                    return;
+                }
+
+                canvasGameObject.SetActive(true);
+            }
         }
 
         TransitionSkipper.Instance // yoink
